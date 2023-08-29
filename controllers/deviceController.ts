@@ -1,4 +1,3 @@
-// src/controllers/DeviceDataController.ts
 
 import { Request, Response } from 'express';
 import deviceDataRepository from '../repositories/device.repository';
@@ -37,6 +36,14 @@ class DeviceDataController {
     }
   }
 
+  async getAllDevice(req: Request, res: Response) {
+    try {
+      const deviceData = await deviceDataRepository.findAllDevice();
+      return res.status(200).json(deviceData);
+    } catch (error) {
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  }
   async uploadExcelData(req: Request, res: Response) {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
@@ -48,7 +55,7 @@ class DeviceDataController {
     const workbook = xlsx.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const excelData:any[] = xlsx.utils.sheet_to_json(sheet);
+    const excelData: any[] = xlsx.utils.sheet_to_json(sheet);
     const expectedColumns = ['device', 't', 'w', 'h', 'p1', 'p25', 'p10'];
 
     const actualColumns = Object.keys(excelData[0]);
@@ -71,13 +78,12 @@ class DeviceDataController {
   }
   async getDataByTimeRange(req: Request, res: Response) {
     const { startTime, endTime } = req.query;
-
     if (!startTime || !endTime) {
       return res.status(400).json({ message: 'Both startTime and endTime are required' });
     }
 
     try {
-      const data = await deviceDataRepository.findByTimeRange(new Date(startTime as string), new Date(endTime as string));
+      const data = await deviceDataRepository.findByTimeRange(await formatDate(startTime),await formatDate(endTime));
       return res.status(200).json(data);
     } catch (error) {
       return res.status(500).json({ message: 'Internal server error' });
@@ -91,29 +97,34 @@ async function rowValidation(rows: any) {
   for (const row of rows as IDevice[]) {
     const validatedRow: Partial<IDevice> = {};
     let isvalidation: boolean = true;
-    console.log(row);
 
     // Validate and convert each column's data type
-  if (
-    typeof row.device !== 'string' ||
-    typeof row.t !== 'string' ||
-    isNaN(Date.parse(row.t)) ||
-    typeof row.w !== 'number' ||
-    typeof row.h !== 'string' ||
-    typeof row.p1 !== 'number' ||
-    typeof row.p25 !== 'number' ||
-    typeof row.p10 !== 'number'
-  ) {
-    isvalidation= false;
-  }
+    if (
+      typeof row.device !== 'string' ||
+      typeof row.t !== 'string' ||
+      isNaN(Date.parse(row.t)) ||
+      typeof row.w !== 'number' ||
+      typeof row.h !== 'string' ||
+      typeof row.p1 !== 'number' ||
+      typeof row.p25 !== 'number' ||
+      typeof row.p10 !== 'number'
+    ) {
+      isvalidation = false;
+    }
     if (isvalidation) {
-      
+
       validatedRows.push(row);
 
     }
     isvalidation = true
   }
-  console.log(validatedRows.length,validatedRows[0]);
   return validatedRows;
+}
+async function formatDate(date:any) {
+  const originalDate = new Date(date);
+  const timezoneOffsetMs = originalDate.getTimezoneOffset() * 60 * 1000;
+  const adjustedDate = new Date(originalDate.getTime() - timezoneOffsetMs);
+  const formattedDate = adjustedDate.toISOString().replace("Z", "+00:00");
+  return formattedDate
 }
 export default new DeviceDataController();

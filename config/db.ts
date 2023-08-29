@@ -1,5 +1,3 @@
-// src/db.ts
-
 import mongoose from 'mongoose';
 
 const MONGO_URI = 'mongodb+srv://mohit-praan-test:3bdDB3UTFQ3strNU@praan.mxro1ad.mongodb.net/';
